@@ -1,5 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
+console.log('Preload script loaded!')
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {
@@ -18,7 +19,11 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
   },
-
+  search: (query: string) => ipcRenderer.invoke('search', query),
+  resizeWindow: (query: { width: number; height: number }) =>
+    ipcRenderer.invoke('resizeWindow', query),
   // You can expose other APTs you need here.
   // ...
 })
+
+console.log('API exposed to renderer')

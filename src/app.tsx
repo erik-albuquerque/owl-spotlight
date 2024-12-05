@@ -1,5 +1,11 @@
+import { SearchInput } from './components/search-input'
+
 const App = () => {
-  return <h1 className="text-2xl text-red-500">App</h1>
+  return (
+    <div className="h-full w-full">
+      <SearchInput />
+    </div>
+  )
 }
 
 export { App }

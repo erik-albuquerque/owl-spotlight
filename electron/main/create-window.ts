@@ -23,11 +23,12 @@ const browserWindowOptions = {
     preload: path.join(__DIR_NAME, 'preload.mjs'),
     nodeIntegration: true,
     nodeIntegrationInSubFrames: false,
-    contextIsolation: false,
+    contextIsolation: true,
+    webSecurity: false, // it`s bad
   },
 } satisfies BrowserWindowConstructorOptions
 
-const createWindow = () => {
+const createWindow = (): void => {
   windowManager.window = new BrowserWindow(browserWindowOptions)
 
   windowManager.window.setAlwaysOnTop(true)
