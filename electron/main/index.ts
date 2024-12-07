@@ -4,6 +4,7 @@ import { registerHotkey } from './hotkey-manager'
 import { TOGGLE_SPOTLIGHT_HOTKEY } from '../constants/hotkeys'
 import type { SearchResult } from '../@types/search-result'
 import { search } from './search'
+import { SearchError } from '../errors/search-error'
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -48,8 +49,14 @@ const handleSearch = async (
   try {
     return await search(query)
   } catch (error) {
-    console.error('[ELECTRON](error): Search failed:', error)
-    return []
+    console.error(
+      `[ELECTRON](error): Search failed: ${error instanceof Error ? error.message : error}`
+    )
+
+    throw new SearchError(
+      `Search failed:
+      ${error instanceof Error ? error.message : error}`
+    )
   }
 }
 
