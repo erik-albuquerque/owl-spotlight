@@ -31,13 +31,13 @@ const getAppDetails = async (appPath: string): Promise<SearchResult> => {
     } satisfies SearchResult
   } catch (error) {
     console.error(
-      `[ELECTRON](error): Error while fetching app details. Path: ${appPath}. 
-      Error: ${error instanceof Error ? error.message : error}`
+      `[ELECTRON](error): Unexpected error while fetching app details ${appPath}: 
+      ${error instanceof Error ? error.message : error}`
     )
 
     throw new SearchError(
-      `Error while fetching app details. Path: ${appPath}. 
-      Error: ${error instanceof Error ? error.message : error}`
+      `Error fetching app details ${appPath}: 
+      ${error instanceof Error ? error.message : error}`
     )
   }
 }

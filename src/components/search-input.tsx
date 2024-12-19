@@ -3,11 +3,11 @@ import * as Lucide from 'lucide-react'
 import { cn } from '../utils/cn'
 
 type SearchResult = {
-  type: string
+  type: 'app' | 'file' | 'recentFile'
   name: string
   path: string
-  icon: string
-  description: string
+  icon: string | null
+  description: string | null
   categories: string[] | null
 }
 
@@ -24,22 +24,25 @@ const SearchResults = ({
     className="mt-2 flex flex-col rounded-md bg-white p-2 pt-0 dark:bg-neutral-900"
     ref={resultListRef}
   >
-    {results.map(app => (
+    {results.map((result, index) => (
       <button
         type="button"
-        key={app.name}
-        className="flex items-center space-x-2"
+        key={`${result.name}-${index}`}
+        className='flex items-center space-x-2'
       >
-        <span className="text-neutral-400">{app.type}</span>
-        <span>{app.name}</span>
-        <span className="text-neutral-500 text-sm">{app.description}</span>
+        <span className="text-neutral-400">{result.type}</span>
+        <span className='truncate text-start'>{result.name}</span>
 
-        {app.categories && (
+        <span className="truncate text-neutral-500 text-sm">
+          {result.description}
+        </span>
+
+        {result.categories && (
           <div>
-            {app.categories.map((category, index) => (
+            {result.categories.map((category, index) => (
               <span key={category} className="text-neutral-400 text-xs">
                 {category}
-                {app.categories?.length !== index + 1 && ', '}
+                {result.categories?.length !== index + 1 && ', '}
               </span>
             ))}
           </div>
@@ -88,7 +91,6 @@ const SearchInput = () => {
   useEffect(() => {
     if (searchQueryInputRef.current) {
       searchQueryInputRef.current.focus()
-      return
     }
   }, [])
 
@@ -113,11 +115,11 @@ const SearchInput = () => {
   }, [results])
 
   return (
-    <div className="relative">
+    <div className="relative bg-white dark:bg-neutral-900">
       <div
         data-focus={isFocused}
         className={cn(
-          'flex h-10 items-center space-x-2 rounded-md bg-white p-2 dark:bg-neutral-900',
+          'flex h-10 items-center space-x-2 rounded-md p-2',
           'border border-neutral-300',
           'data-[focus=true]:border-neutral-700',
           'transition-colors'

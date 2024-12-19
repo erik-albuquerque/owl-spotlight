@@ -21,6 +21,11 @@ const searchAppsByPath = async (
 
           if (!APP_CACHE.has(app.name)) APP_CACHE.set(app.name, app)
         } catch (error) {
+          console.error(
+            `[ELECTRON](error): Unexpected error while processing app at ${appPath}: 
+            ${error instanceof Error ? error.message : error}`
+          )
+
           throw new SearchError(
             `Error processing app at ${appPath}: 
             ${error instanceof Error ? error.message : error}`
@@ -31,9 +36,14 @@ const searchAppsByPath = async (
 
     await Promise.all(tasks)
   } catch (error) {
+    console.error(
+      `Unexpected error while searching apps in ${basePath}: 
+      ${error instanceof Error ? error.message : error}`
+    )
+
     throw new SearchError(
       `Error searching apps in ${basePath}: 
-      ${error instanceof Error ? error.message : error}`
+        ${error instanceof Error ? error.message : error}`
     )
   }
 }

@@ -1,5 +1,5 @@
 type SearchResult = {
-  type: 'app' | 'file'
+  type: 'app' | 'file' | 'recentFile'
   name: string
   path: string
   icon: string | null

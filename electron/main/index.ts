@@ -50,7 +50,8 @@ const handleSearch = async (
     return await search(query)
   } catch (error) {
     console.error(
-      `[ELECTRON](error): Search failed: ${error instanceof Error ? error.message : error}`
+      `[ELECTRON](error): Search failed: 
+      ${error instanceof Error ? error.message : error}`
     )
 
     throw new SearchError(

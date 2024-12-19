@@ -7,6 +7,7 @@ const registerHotkey = (hotkey: string, action: () => void) => {
       console.warn(
         `[ELECTRON](warn): Hotkey "${hotkey}" is already registered.`
       )
+
       throw new HotkeyError(`Hotkey "${hotkey}" is already registered.`)
     }
 
@@ -19,14 +20,14 @@ const registerHotkey = (hotkey: string, action: () => void) => {
     console.log(`[ELECTRON](log): Hotkey "${hotkey}" registered successfully.`)
   } catch (error) {
     console.error(
-      `[ELECTRON](error): Error while registering hotkey "${hotkey}":`,
-      error
+      `[ELECTRON](error): Error while registering hotkey "${hotkey}": 
+      ${error instanceof Error ? error.message : error}`
     )
-    if (error instanceof Error) {
-      throw new HotkeyError(
-        `Failed to register hotkey "${hotkey}": ${error.message}`
-      )
-    }
+
+    throw new HotkeyError(
+      `Failed to register hotkey "${hotkey}": 
+      ${error instanceof Error ? error.message : error}`
+    )
   }
 }
 
