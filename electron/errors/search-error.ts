@@ -1,7 +1,13 @@
 class SearchError extends Error {
   constructor(message: string) {
     super(message)
-    this.message = 'SearchError'
+    this.name = this.constructor.name
+
+    Object.setPrototypeOf(this, SearchError.prototype)
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor)
+    }
   }
 }
 
