@@ -1,39 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Lucide from 'lucide-react'
 import { cn } from '../utils/cn'
-
-type SearchResult = {
-  type: 'app' | 'file' | 'recentFile'
-  name: string
-  path: string
-  icon: string | null
-  description: string | null
-  categories: string[] | null
-}
-
-type Results = SearchResult[]
+import type { SearchResult } from '../../electron/@types/search-result'
 
 const SearchResults = ({
   results,
   resultListRef,
 }: {
-  results: Results
+  results: SearchResult[]
   resultListRef: React.RefObject<HTMLDivElement>
 }) => (
   <div
-    className="mt-2 flex flex-col rounded-md bg-white p-2 pt-0 dark:bg-neutral-900"
+    className='flex flex-col space-y-2 bg-white p-2 dark:bg-neutral-900'
     ref={resultListRef}
   >
     {results.map((result, index) => (
       <button
         type="button"
         key={`${result.name}-${index}`}
-        className='flex items-center space-x-2'
+        className="flex items-center space-x-3"
       >
-        <span className="text-neutral-400">{result.type}</span>
+        <span className="justify-self-end text-neutral-400">{result.type}</span>
+
+        {result.type === 'app' && result.icon && (
+          <img
+            src={`file://${result.icon}`}
+            className="h-8 w-8"
+            alt={result.name}
+          />
+        )}
+
+        {result.type === 'file' && result.icon && (
+          <img src={result.icon} className="h-8 w-8" alt={result.name} />
+        )}
+
         <span className='truncate text-start'>{result.name}</span>
 
-        <span className="truncate text-neutral-500 text-sm">
+        <span className='max-w-[40%] truncate text-neutral-500 text-sm'>
           {result.description}
         </span>
 
@@ -58,7 +61,7 @@ const SearchInput = () => {
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
-  const [results, setResults] = useState<Results | null>(null)
+  const [results, setResults] = useState<SearchResult[] | null>(null)
 
   const handleToggleFocus = () => setIsFocused(prev => !prev)
 
@@ -77,7 +80,7 @@ const SearchInput = () => {
     }
 
     try {
-      const searchResults: Results = await window.ipcRenderer.invoke(
+      const searchResults: SearchResult[] = await window.ipcRenderer.invoke(
         'search',
         input
       )
@@ -102,7 +105,7 @@ const SearchInput = () => {
 
         const query = {
           width: 550,
-          height: results?.length ? Math.min(resultListHeight + 48, 500) : 40,
+          height: results?.length ? Math.min(resultListHeight + 40, 500) : 40,
         }
 
         await window.ipcRenderer.invoke('resizeWindow', query)
@@ -115,12 +118,12 @@ const SearchInput = () => {
   }, [results])
 
   return (
-    <div className="relative bg-white dark:bg-neutral-900">
+    <div className='relative dark:bg-neutral-900'>
       <div
         data-focus={isFocused}
         className={cn(
           'flex h-10 items-center space-x-2 rounded-md p-2',
-          'border border-neutral-300',
+          'border border-neutral-300 dark:border-neutral-500',
           'data-[focus=true]:border-neutral-700',
           'transition-colors'
         )}

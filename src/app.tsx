@@ -2,7 +2,7 @@ import { SearchInput } from './components/search-input'
 
 const App = () => {
   return (
-    <div className="h-full w-full">
+    <div className='h-full w-full'>
       <SearchInput />
     </div>
   )
