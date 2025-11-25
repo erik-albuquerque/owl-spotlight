@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { createWindow, windowManager } from './create-window'
 import { registerHotkey } from './hotkey-manager'
 import { TOGGLE_SPOTLIGHT_HOTKEY } from '../constants/hotkeys'
-import type { SearchResult } from '../@types/search-result'
+import type { SearchFile, SearchResult } from '../@types/search-result'
 import { search } from './search'
 import { SearchError } from '../errors/search-error'
 
@@ -36,14 +36,14 @@ const handleResizeWindow = async (
   _event: Electron.IpcMainInvokeEvent,
   { width, height }: { width: number; height: number }
 ): Promise<void> => {
-  console.log(`[ELECTRON](log): Resizing window to: ${width}x${height}`)
+  // console.log(`[ELECTRON](log): Resizing window to: ${width}x${height}`)
   windowManager.window?.setBounds({ width, height }, true)
 }
 
 const handleSearch = async (
   _event: Electron.IpcMainInvokeEvent,
   query: string
-): Promise<SearchResult[]> => {
+): Promise<(SearchResult | SearchFile)[]> => {
   console.log(`[ELECTRON](log): Searching for: ${query}`)
 
   try {

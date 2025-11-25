@@ -7,4 +7,6 @@ type SearchResult = {
   categories: string[] | null
 }
 
-export type { SearchResult }
+type SearchFile = Omit<SearchResult, 'description' | 'categories'>
+
+export type { SearchResult, SearchFile }
