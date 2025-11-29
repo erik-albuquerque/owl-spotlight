@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { SearchResult } from './@types/search-result'
 
 console.log('Preload script loaded!')
 // --------- Expose some API to the Renderer process ---------
@@ -22,6 +23,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   search: (query: string) => ipcRenderer.invoke('search', query),
   resizeWindow: (query: { width: number; height: number }) =>
     ipcRenderer.invoke('resizeWindow', query),
+  executeItem: (item: SearchResult) => ipcRenderer.invoke('executeItem', item),
   // You can expose other APTs you need here.
   // ...
 })

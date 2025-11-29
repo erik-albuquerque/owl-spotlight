@@ -1,59 +1,120 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  memo,
+} from 'react'
 import * as Lucide from 'lucide-react'
 import { cn } from '../utils/cn'
-import type { SearchResult } from '../../electron/@types/search-result'
+import type {
+  SearchFile,
+  SearchResult,
+} from '../../electron/@types/search-result'
 
-const SearchResults = ({
-  results,
-  resultListRef,
-}: {
-  results: SearchResult[]
-  resultListRef: React.RefObject<HTMLDivElement>
-}) => (
-  <div
-    className='flex flex-col space-y-2 bg-white p-2 dark:bg-neutral-900'
-    ref={resultListRef}
-  >
-    {results.map((result, index) => (
+interface SearchResultItemProps {
+  result: SearchResult
+  onExecute: (result: SearchResult) => void
+}
+
+const SearchResultItem = memo(
+  ({ result, onExecute }: SearchResultItemProps) => {
+    const handleClick = () => onExecute(result)
+
+    return (
       <button
         type="button"
-        key={`${result.name}-${index}`}
-        className="flex items-center space-x-3"
+        className="group flex w-full items-center space-x-3 rounded-md p-1 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        onClick={handleClick}
       >
-        <span className="justify-self-end text-neutral-400">{result.type}</span>
+        {/* <span className="w-8 justify-self-end text-right text-neutral-400 text-xs uppercase">
+          {result.type}
+        </span> */}
 
         {result.type === 'app' && result.icon && (
           <img
             src={`file://${result.icon}`}
-            className="h-8 w-8"
+            className="h-8 w-8 object-contain"
             alt={result.name}
+            decoding="async"
           />
         )}
 
         {result.type === 'file' && result.icon && (
-          <img src={result.icon} className="h-8 w-8" alt={result.name} />
+          <img
+            src={result.icon}
+            className="h-8 w-8 object-contain"
+            alt={result.name}
+            decoding="async"
+          />
         )}
 
-        <span className='truncate text-start'>{result.name}</span>
+        <div className="flex flex-1 flex-col items-start overflow-hidden">
+          <span className="truncate text-start font-medium text-neutral-700 dark:text-neutral-200">
+            {result.name}
+          </span>
 
-        <span className='max-w-[40%] truncate text-neutral-500 text-sm'>
-          {result.description}
-        </span>
+          <div className="flex w-full items-center space-x-2">
+            {result.type === 'file' ? (
+              <span className="w-full truncate text-start text-neutral-500 text-xs">
+                {(result as unknown as SearchFile).shortPath}
+              </span>
+            ) : (
+              <span className="w-full truncate text-start text-neutral-500 text-xs">
+                {result.description}
+              </span>
+            )}
+          </div>
+        </div>
 
-        {result.categories && (
-          <div>
-            {result.categories.map((category, index) => (
-              <span key={category} className="text-neutral-400 text-xs">
+        {result.categories && result.categories.length > 0 && (
+          <div className="hidden text-right sm:block">
+            {result.categories.slice(0, 1).map(category => (
+              <span
+                key={category}
+                className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-400 dark:bg-neutral-800"
+              >
                 {category}
-                {result.categories?.length !== index + 1 && ', '}
               </span>
             ))}
           </div>
         )}
       </button>
-    ))}
-  </div>
+    )
+  }
 )
+
+SearchResultItem.displayName = 'SearchResultItem'
+
+const SearchResults = memo(
+  ({
+    results,
+    resultListRef,
+    onExecuteItem,
+  }: {
+    results: SearchResult[]
+    resultListRef: React.RefObject<HTMLDivElement>
+    onExecuteItem: (item: SearchResult) => void
+  }) => {
+    return (
+      <div
+        className="flex flex-col space-y-1 bg-white p-2 dark:bg-neutral-900"
+        ref={resultListRef}
+      >
+        {results.map((result, index) => (
+          <SearchResultItem
+            key={`${result.name}-${index}`}
+            result={result}
+            onExecute={onExecuteItem}
+          />
+        ))}
+      </div>
+    )
+  }
+)
+
+SearchResults.displayName = 'SearchResults'
 
 const SearchInput = () => {
   const searchQueryInputRef = useRef<HTMLInputElement | null>(null)
@@ -65,60 +126,88 @@ const SearchInput = () => {
 
   const handleToggleFocus = () => setIsFocused(prev => !prev)
 
+  const handleExecuteItem = useCallback(async (itemPath: SearchResult) => {
+    try {
+      await window.ipcRenderer.invoke('executeItem', itemPath)
+    } catch (error) {
+      console.error('Error on execute item:', error)
+    }
+  }, [])
+
   const handleClearSearchQuery = useCallback(() => {
     searchQueryInputRef.current?.focus()
     setSearchQuery('')
     setResults(null)
   }, [])
 
-  const handleSearch = useCallback(async (input: string) => {
-    setSearchQuery(input)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
 
-    if (input.trim() === '') {
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
       setResults(null)
       return
     }
 
-    try {
-      const searchResults: SearchResult[] = await window.ipcRenderer.invoke(
-        'search',
-        input
-      )
-      setResults(searchResults)
-    } catch (error) {
-      console.error('Search error:', error)
-      setResults([])
-    }
-  }, [])
-
-  useEffect(() => {
-    if (searchQueryInputRef.current) {
-      searchQueryInputRef.current.focus()
-    }
-  }, [])
-
-  useEffect(() => {
-    const resizeWindow = async () => {
+    const delayDebounceFn = setTimeout(async () => {
       try {
-        const resultListHeight =
-          resultListRef.current?.getBoundingClientRect().height || 112
+        const searchResults: SearchResult[] = await window.ipcRenderer.invoke(
+          'search',
+          searchQuery
+        )
+        setResults(searchResults)
+      } catch (error) {
+        console.error('Search error:', error)
+        setResults([])
+      }
+    }, 300)
+
+    return () => clearTimeout(delayDebounceFn)
+  }, [searchQuery])
+
+  useEffect(() => {
+    searchQueryInputRef.current?.focus()
+  }, [])
+
+  useLayoutEffect(() => {
+    let isMounted = true
+
+    const resizeWindow = async () => {
+      if (!resultListRef.current) {
+        if (isMounted)
+          await window.ipcRenderer.invoke('resizeWindow', {
+            width: 550,
+            height: 60,
+          })
+        return
+      }
+
+      try {
+        const scrollHeight = resultListRef.current.scrollHeight
 
         const query = {
           width: 550,
-          height: results?.length ? Math.min(resultListHeight + 40, 500) : 40,
+          height: results?.length ? Math.min(scrollHeight + 60, 500) : 60,
         }
 
-        await window.ipcRenderer.invoke('resizeWindow', query)
+        if (isMounted) {
+          await window.ipcRenderer.invoke('resizeWindow', query)
+        }
       } catch (error) {
         console.error(`Error resizing window: ${(error as Error).message}`)
       }
     }
 
     resizeWindow()
+
+    return () => {
+      isMounted = false
+    }
   }, [results])
 
   return (
-    <div className='relative dark:bg-neutral-900'>
+    <div className="relative w-full overflow-hidden dark:bg-neutral-900">
       <div
         data-focus={isFocused}
         className={cn(
@@ -137,7 +226,7 @@ const SearchInput = () => {
           value={searchQuery}
           onFocus={handleToggleFocus}
           onBlur={handleToggleFocus}
-          onChange={e => handleSearch(e.target.value)}
+          onChange={handleInputChange}
           ref={searchQueryInputRef}
         />
 
@@ -153,7 +242,13 @@ const SearchInput = () => {
       </div>
 
       {results && results.length > 0 && (
-        <SearchResults results={results} resultListRef={resultListRef} />
+        <div className="max-h-[440px] overflow-y-auto">
+          <SearchResults
+            results={results}
+            resultListRef={resultListRef}
+            onExecuteItem={handleExecuteItem}
+          />
+        </div>
       )}
     </div>
   )

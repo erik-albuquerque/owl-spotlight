@@ -5,6 +5,7 @@ import { TOGGLE_SPOTLIGHT_HOTKEY } from '../constants/hotkeys'
 import type { SearchFile, SearchResult } from '../@types/search-result'
 import { search } from './search'
 import { SearchError } from '../errors/search-error'
+import { executeItem } from './search/utils/execute-item'
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -36,7 +37,6 @@ const handleResizeWindow = async (
   _event: Electron.IpcMainInvokeEvent,
   { width, height }: { width: number; height: number }
 ): Promise<void> => {
-  // console.log(`[ELECTRON](log): Resizing window to: ${width}x${height}`)
   windowManager.window?.setBounds({ width, height }, true)
 }
 
@@ -44,8 +44,6 @@ const handleSearch = async (
   _event: Electron.IpcMainInvokeEvent,
   query: string
 ): Promise<(SearchResult | SearchFile)[]> => {
-  console.log(`[ELECTRON](log): Searching for: ${query}`)
-
   try {
     return await search(query)
   } catch (error) {
@@ -61,8 +59,28 @@ const handleSearch = async (
   }
 }
 
+const handleExecuteItem = async (
+  _event: Electron.IpcMainInvokeEvent,
+  item: SearchResult | SearchFile
+) => {
+  try {
+    return await executeItem(item)
+  } catch (error) {
+    console.error(
+      `[ELECTRON](error): Error executing item: 
+      ${error instanceof Error ? error.message : error}`
+    )
+
+    throw new SearchError(
+      `Error executing item:
+      ${error instanceof Error ? error.message : error}`
+    )
+  }
+}
+
 ipcMain.handle('search', handleSearch)
 ipcMain.handle('resizeWindow', handleResizeWindow)
+ipcMain.handle('executeItem', handleExecuteItem)
 
 app
   .whenReady()
