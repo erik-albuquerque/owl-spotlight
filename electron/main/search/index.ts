@@ -7,18 +7,20 @@ import { searchFlatpakApps } from './search-flatpak-apps'
 
 const MAX_VISIBLE_ITEMS = 10 // 10 apps
 
-const search = async (query: string): Promise<(SearchResult | SearchFile)[]> => {
+const search = async (
+  query: string
+): Promise<(SearchResult | SearchFile)[]> => {
   try {
-    const lowerQuery = query.toLowerCase()
+    const lowerQuery = query.toLowerCase() 
+
+    if (APP_CACHE.size === 0) {
+      await searchFlatpakApps()
+      await searchApps()
+    }
 
     const apps = Array.from(APP_CACHE.values())
       .filter(app => app.name.toLowerCase().includes(lowerQuery))
       .slice(0, MAX_VISIBLE_ITEMS)
-
-    if (apps.length === 0) {
-      await searchFlatpakApps()
-      await searchApps()
-    }
 
     const files = (await searchFiles(lowerQuery)).slice(0, MAX_VISIBLE_ITEMS)
 

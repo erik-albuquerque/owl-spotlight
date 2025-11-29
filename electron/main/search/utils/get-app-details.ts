@@ -1,6 +1,5 @@
-import path from 'node:path'
+import _path from 'node:path'
 import fs from 'node:fs/promises'
-
 import type { SearchResult } from '../../../@types/search-result'
 import { parseAppCategories } from './parse-app-categories'
 import { parseDesktopFile } from './parse-desktop-file'
@@ -8,12 +7,13 @@ import { SearchError } from '../../../errors/search-error'
 import { execAsyncCommand } from '../../../utils/exec-async-command'
 
 let cachedCurrentIconTheme: string | null = null
+let CACHED_THEME_SEARCH_SET: Set<string> | null = null
 
 const CACHED_ICONS = new Map<string, string>()
 
 const ICON_BASE_DIRS = [
   '/usr/share/icons',
-  path.join(process.env.HOME || '', '.icons'),
+  _path.join(process.env.HOME || '', '.icons'),
   '/var/lib/flatpak/exports/share/icons',
 ]
 const ICON_SIZES = [128, 96, 64, 48, 32, 24]
@@ -39,48 +39,75 @@ const getCurrentIconTheme = async (): Promise<string> => {
     )
 
     cachedCurrentIconTheme = currentIconTheme.replace(/'/g, '').trim()
-    return cachedCurrentIconTheme
+    return cachedCurrentIconTheme || 'hicolor'
   } catch (error) {
     console.error(
-      `[ELECTRON](error): Couldn't read icon theme: ${
+      `[ELECTRON](error): Couldn't read icon theme, using hicolor: ${
         error instanceof Error ? error.message : error
       }`
     )
-
-    throw new SearchError(
-      `Couldn't read icon theme: ${error instanceof Error ? error.message : error}`
-    )
+    return 'hicolor'
   }
 }
 
-const getFallbackIconPath = async (): Promise<string> => {
-  if (CACHED_FALLBACK_PATH !== null) {
-    return CACHED_FALLBACK_PATH
+const getThemeSearchSet = async (): Promise<Set<string>> => {
+  if (CACHED_THEME_SEARCH_SET) {
+    return CACHED_THEME_SEARCH_SET
   }
 
   const currentTheme = await getCurrentIconTheme()
+
   const baseTheme = currentTheme.split('-')[0]
-  const searchThemes = new Set([currentTheme, baseTheme, 'hicolor'])
+  const themes = new Set([currentTheme, baseTheme, 'hicolor'])
+
+  CACHED_THEME_SEARCH_SET = themes
+  return themes
+}
+
+const generateIconPaths = (
+  iconName: string,
+  themes: Set<string>,
+  categories: string[]
+): string[] => {
+  const paths: string[] = []
 
   for (const baseDir of ICON_BASE_DIRS) {
-    for (const theme of searchThemes) {
-      const themePath = path.join(baseDir, theme)
+    for (const theme of themes) {
+      const themePath = _path.join(baseDir, theme)
+
+      if (categories.includes('apps') || iconName === 'unknown') {
+        paths.push(_path.join(themePath, 'scalable', 'apps', `${iconName}.svg`))
+      }
 
       for (const size of ICON_SIZES) {
         for (const sizeDir of [`${size}x${size}`, `${size}`]) {
-          const basePath = path.join(themePath, sizeDir, 'mimetypes', 'unknown')
-
-          for (const ext of ['.png', '.svg']) {
-            const filePath = `${basePath}${ext}`
-            try {
-              await fs.access(filePath)
-              CACHED_FALLBACK_PATH = filePath
-              return filePath
-            } catch {}
+          for (const category of categories) {
+            const basePath = _path.join(themePath, sizeDir, category, iconName)
+            paths.push(`${basePath}.png`)
+            paths.push(`${basePath}.svg`)
           }
         }
       }
     }
+  }
+  return paths
+}
+
+const getFallbackIconPath = async (): Promise<string> => {
+  if (CACHED_FALLBACK_PATH !== null) return CACHED_FALLBACK_PATH
+
+  const searchThemes = await getThemeSearchSet()
+
+  const potentialFallbackPaths = generateIconPaths('unknown', searchThemes, [
+    'mimetypes',
+  ])
+
+  for (const filePath of potentialFallbackPaths) {
+    try {
+      await fs.access(filePath)
+      CACHED_FALLBACK_PATH = filePath
+      return filePath
+    } catch {}
   }
 
   CACHED_FALLBACK_PATH = ''
@@ -90,79 +117,51 @@ const getFallbackIconPath = async (): Promise<string> => {
 const resolveAppIconByTheme = async (iconName: string): Promise<string> => {
   if (CACHED_ICONS.has(iconName)) return CACHED_ICONS.get(iconName)!
 
-  const currentTheme = await getCurrentIconTheme()
-  const baseTheme = currentTheme.split('-')[0]
+  const themes = await getThemeSearchSet()
 
-  const searchThemes = new Set([currentTheme, baseTheme, 'hicolor'])
+  const appPaths = generateIconPaths(iconName, themes, ICON_CATEGORIES)
 
-  const potentialPaths: string[] = []
-
-  for (const baseDir of ICON_BASE_DIRS) {
-    for (const theme of searchThemes) {
-      const themePath = path.join(baseDir, theme)
-
-      potentialPaths.push(
-        path.join(themePath, 'scalable', 'apps', `${iconName}.svg`)
-      )
-
-      for (const size of ICON_SIZES) {
-        for (const sizeDir of [`${size}x${size}`, `${size}`]) {
-          for (const category of ICON_CATEGORIES) {
-            const basePath = path.join(themePath, sizeDir, category, iconName)
-            potentialPaths.push(`${basePath}.svg`)
-            potentialPaths.push(`${basePath}.png`)
-          }
-        }
-      }
-    }
-  }
-
-  for (const filePath of potentialPaths) {
+  for (const appPath of appPaths) {
     try {
-      await fs.access(filePath)
-      CACHED_ICONS.set(iconName, filePath)
-      return filePath
+      await fs.access(appPath)
+      CACHED_ICONS.set(iconName, appPath)
+      return appPath
     } catch {}
   }
 
   const fallbackPath = await getFallbackIconPath()
-
   CACHED_ICONS.set(iconName, fallbackPath)
-
   return fallbackPath
 }
 
-const getAppDetails = async (appPath: string): Promise<SearchResult> => {
+const getAppDetails = async (
+  path: string,
+  content: string
+): Promise<SearchResult> => {
   try {
-    const fileContent = await fs.readFile(appPath, 'utf-8')
-
     const icon = await resolveAppIconByTheme(
-      parseDesktopFile(fileContent, 'Icon') ||
-        path.basename(appPath, '.desktop')
+      parseDesktopFile(content, 'Icon') || _path.basename(path, '.desktop')
     )
 
     return {
       type: 'app',
       icon,
+      path,
       name:
-        parseDesktopFile(fileContent, 'Name') ||
-        path.basename(appPath, '.desktop'),
+        parseDesktopFile(content, 'Name') || _path.basename(path, '.desktop'),
       description:
-        parseDesktopFile(fileContent, 'Comment') ||
-        parseDesktopFile(fileContent, 'GenericName'),
-      categories: parseAppCategories(
-        parseDesktopFile(fileContent, 'Categories')
-      ),
-      path: appPath,
+        parseDesktopFile(content, 'Comment') ||
+        parseDesktopFile(content, 'GenericName'),
+      categories: parseAppCategories(parseDesktopFile(content, 'Categories')),
     } satisfies SearchResult
   } catch (error) {
     console.error(
-      `[ELECTRON](error): Unexpected error while fetching app details ${appPath}: 
+      `[ELECTRON](error): Unexpected error while fetching app details ${path}: 
       ${error instanceof Error ? error.message : error}`
     )
 
     throw new SearchError(
-      `Error fetching app details ${appPath}: 
+      `Error fetching app details ${path}: 
       ${error instanceof Error ? error.message : error}`
     )
   }

@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises'
 import { SearchError } from '../../../errors/search-error'
 import { APP_CACHE } from '../../../store/app-cache'
 import { execAsyncCommand } from '../../../utils/exec-async-command'
@@ -12,12 +13,14 @@ const searchAppsByPath = async (
 
   try {
     const { stdout } = await execAsyncCommand(command)
-    const appPaths = stdout.split('\n').filter(Boolean)
+    const appPaths = Array.from(new Set(stdout.split('\n'))).filter(Boolean)
 
-    const tasks = appPaths.map(appPath =>
+    const apps = appPaths.map(appPath =>
       promiseLimit(async () => {
         try {
-          const app = await getAppDetails(appPath)
+          const appContent = await fs.readFile(appPath, 'utf-8')
+
+          const app = await getAppDetails(appPath, appContent)
 
           if (!APP_CACHE.has(app.name)) APP_CACHE.set(app.name, app)
         } catch (error) {
@@ -34,7 +37,7 @@ const searchAppsByPath = async (
       })
     )
 
-    await Promise.all(tasks)
+    await Promise.all(apps)
   } catch (error) {
     console.error(
       `Unexpected error while searching apps in ${basePath}: 

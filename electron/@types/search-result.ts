@@ -7,6 +7,8 @@ type SearchResult = {
   categories: string[] | null
 }
 
-type SearchFile = Omit<SearchResult, 'description' | 'categories'>
+type SearchFile = Omit<SearchResult, 'description' | 'categories'> & {
+  shortPath: string
+}
 
 export type { SearchResult, SearchFile }
