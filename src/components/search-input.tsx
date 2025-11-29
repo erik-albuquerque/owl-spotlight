@@ -12,6 +12,7 @@ import type {
   SearchFile,
   SearchResult,
 } from '../../electron/@types/search-result'
+import { Button } from './ui/button'
 
 interface SearchResultItemProps {
   result: SearchResult
@@ -23,9 +24,10 @@ const SearchResultItem = memo(
     const handleClick = () => onExecute(result)
 
     return (
-      <button
+      <Button
+        variant='ghost'
         type="button"
-        className="group flex w-full items-center space-x-3 rounded-md p-1 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        className="group cursor-pointer flex w-full items-center space-x-3 rounded-md p-1 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
         onClick={handleClick}
       >
         {/* <span className="w-8 justify-self-end text-right text-neutral-400 text-xs uppercase">
@@ -80,7 +82,7 @@ const SearchResultItem = memo(
             ))}
           </div>
         )}
-      </button>
+      </Button>
     )
   }
 )
@@ -117,8 +119,8 @@ const SearchResults = memo(
 SearchResults.displayName = 'SearchResults'
 
 const SearchInput = () => {
-  const searchQueryInputRef = useRef<HTMLInputElement | null>(null)
-  const resultListRef = useRef<HTMLDivElement | null>(null)
+  const searchQueryInputRef = useRef<HTMLInputElement>(null!)
+  const resultListRef = useRef<HTMLDivElement>(null!)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -178,7 +180,7 @@ const SearchInput = () => {
         if (isMounted)
           await window.ipcRenderer.invoke('resizeWindow', {
             width: 550,
-            height: 60,
+            height: 40,
           })
         return
       }
@@ -188,7 +190,7 @@ const SearchInput = () => {
 
         const query = {
           width: 550,
-          height: results?.length ? Math.min(scrollHeight + 60, 500) : 60,
+          height: results?.length && Math.min(scrollHeight + 40, 500),
         }
 
         if (isMounted) {
@@ -242,7 +244,7 @@ const SearchInput = () => {
       </div>
 
       {results && results.length > 0 && (
-        <div className="max-h-[440px] overflow-y-auto">
+        <div className="overflow-y-auto">
           <SearchResults
             results={results}
             resultListRef={resultListRef}

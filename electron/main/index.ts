@@ -18,9 +18,9 @@ app.on('activate', () => {
   if (!BrowserWindow.getAllWindows().length) createWindow()
 })
 
-app.on('browser-window-blur', () => {
-  windowManager.window?.isVisible() && windowManager.window.hide()
-})
+// app.on('browser-window-blur', () => {
+//   windowManager.window?.isVisible() && windowManager.window.hide()
+// })
 
 const toggleWindow = (): void => {
   if (windowManager.window?.isVisible()) {
