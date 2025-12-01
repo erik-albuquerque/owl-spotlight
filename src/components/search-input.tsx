@@ -13,6 +13,7 @@ import type {
   SearchResult,
 } from '../../electron/@types/search-result'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 
 interface SearchResultItemProps {
   result: SearchResult
@@ -168,9 +169,9 @@ const SearchInput = () => {
     return () => clearTimeout(delayDebounceFn)
   }, [searchQuery])
 
-  useEffect(() => {
-    searchQueryInputRef.current?.focus()
-  }, [])
+  // useEffect(() => {
+  //   searchQueryInputRef.current?.focus()
+  // }, [])
 
   useLayoutEffect(() => {
     let isMounted = true
@@ -221,9 +222,10 @@ const SearchInput = () => {
       >
         <Lucide.Search className="size-4 text-neutral-400" />
 
-        <input
+        <Input
+          autoFocus
           type="text"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
+          className="w-full focus-visible:ring-0 shadow-none border-0 p-0  bg-transparent text-sm outline-none placeholder:text-neutral-400"
           placeholder="Search..."
           value={searchQuery}
           onFocus={handleToggleFocus}
